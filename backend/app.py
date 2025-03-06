@@ -5,38 +5,50 @@ import numpy as np
 import requests
 from datetime import datetime
 from collections import defaultdict
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
-# Load trained model
-model_path = os.path.join(os.getcwd(), "backend", "best_cnn_model.keras")
-best_cnn_model = load_model(model_path)
+# Load trained model with error handling
+try:
+    model_path = os.path.join(os.getcwd(), "backend", "best_cnn_model.keras")
+    best_cnn_model = load_model(model_path)
+except Exception as e:
+    print(f"Error loading model: {e}")
+    best_cnn_model = None
 
 api_key = '701cf10ad3df9b6f5f58f40bfba7e837'
 
-# Function to get city coordinates
 def get_city_coordinates(city_name):
-    url = f"http://api.openweathermap.org/geo/1.0/direct?q={city_name}&limit=1&appid={api_key}"
-    response = requests.get(url)
-    if response.status_code == 200 and response.json():
-        data = response.json()[0]
-        return data['lat'], data['lon']
+    try:
+        url = f"http://api.openweathermap.org/geo/1.0/direct?q={city_name}&limit=1&appid={api_key}"
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if data:
+            return data[0]['lat'], data[0]['lon']
+    except Exception as e:
+        print(f"Error fetching coordinates: {e}")
     return None, None
 
-# Function to fetch PM2.5 forecast data
 def fetch_forecast_pm25(lat, lon):
-    url = f"http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat={lat}&lon={lon}&appid={api_key}"
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        url = f"http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat={lat}&lon={lon}&appid={api_key}"
+        response = requests.get(url)
+        response.raise_for_status()
         data = response.json()
+        
         pm2_5_daily = defaultdict(list)
-        for entry in data['list']:
+        for entry in data.get('list', []):
             date_str = datetime.utcfromtimestamp(entry['dt']).strftime('%Y-%m-%d')
             pm2_5_daily[date_str].append(entry['components']['pm2_5'])
-        return {date: sum(values) / len(values) for date, values in pm2_5_daily.items()}
-    return {}
 
-# Function to calculate AQI, category, and warning
+        return {date: sum(values) / len(values) for date, values in pm2_5_daily.items()}
+    except Exception as e:
+        print(f"Error fetching PM2.5 data: {e}")
+        return {}
+
 def calculate_aqi_and_warning(pm25):
     breakpoints = [
         (0, 30, 0, 50, "Good", "Satisfactory air quality.", "green"),
@@ -49,65 +61,80 @@ def calculate_aqi_and_warning(pm25):
     for low_pm, high_pm, low_aqi, high_aqi, category, warning, color in breakpoints:
         if low_pm <= pm25 <= high_pm:
             aqi = (high_aqi - low_aqi) / (high_pm - low_pm) * (pm25 - low_pm) + low_aqi
-            return round(aqi), category, warning, color
-    return None, "Out of Range", "PM2.5 level is beyond measurable limits.", "gray"
+            return round(aqi) if aqi is not None else 0, category, warning, color
+    return 0, "Out of Range", "PM2.5 level is beyond measurable limits.", "gray"
 
-# Function to predict PM2.5
 def predict_pm25(historical_data):
-    sequence = np.array(historical_data).reshape((1, 5, 1))
-    predictions = []
-    for _ in range(5):
-        pred = best_cnn_model.predict(sequence)[0, 0]
-        pm25_value = abs(pred)
-        aqi, category, warning, color = calculate_aqi_and_warning(pm25_value)
-        predictions.append({
-            "pm25": round(pm25_value, 2),
-            "aqi": aqi,
-            "category": category,
-            "warning": warning,
-            "color": color
-        })
-        sequence = np.roll(sequence, shift=-1, axis=1)
-        sequence[0, -1, 0] = pred
-    return predictions
+    try:
+        if best_cnn_model is None:
+            return []
+
+        sequence = np.array(historical_data).reshape((1, 5, 1))
+        predictions = []
+        for _ in range(5):
+            pred = best_cnn_model.predict(sequence)[0, 0]
+            pm25_value = abs(pred)
+            aqi, category, warning, color = calculate_aqi_and_warning(pm25_value)
+            predictions.append({
+                "pm25": round(pm25_value, 2),
+                "aqi": aqi,
+                "category": category,
+                "warning": warning,
+                "color": color
+            })
+            sequence = np.roll(sequence, shift=-1, axis=1)
+            sequence[0, -1, 0] = pred
+        return predictions
+    except Exception as e:
+        print(f"Error in prediction: {e}")
+        return []
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
 @app.route('/result')
 def result():
     return render_template('result.html')
+
 @app.route('/predict', methods=['POST'])
 def predict():
-    city_name = request.json.get("city")  # Fetch city from request
-    lat, lon = get_city_coordinates(city_name)
-    
-    if lat is None or lon is None:
-        return jsonify({"error": "Invalid city"}), 400
+    try:
+        city_name = request.json.get("city")
+        lat, lon = get_city_coordinates(city_name)
 
-    forecast_data = fetch_forecast_pm25(lat, lon)
-    if not forecast_data:
-        return jsonify({"error": "No forecast data available"}), 400
+        if lat is None or lon is None:
+            return jsonify({"error": "Invalid city"}), 400
 
-    historical_data = list(forecast_data.values())[:5]
-    if len(historical_data) < 5:
-        return jsonify({"error": "Insufficient data"}), 400
+        forecast_data = fetch_forecast_pm25(lat, lon)
+        if not forecast_data:
+            return jsonify({"error": "No forecast data available"}), 400
 
-    predictions = predict_pm25(historical_data)
+        historical_data = list(forecast_data.values())[:5]
+        if len(historical_data) < 5:
+            return jsonify({"error": "Insufficient data"}), 400
 
-    return jsonify({
-        "city": city_name,  # Fixed the incorrect variable reference
-        "predictions": [
-            {
-                "pm25": float(item["pm25"]),
-                "aqi": int(item["aqi"]),
-                "category": item["category"],
-                "warning": item["warning"],
-                "color": item["color"]
-            }
-            for item in predictions
-        ]
-    })
+        predictions = predict_pm25(historical_data)
+
+        # Convert numpy.float32 to Python float
+        for item in predictions:
+            item["pm25"] = float(item["pm25"])
+            item["aqi"] = int(item["aqi"]) if item["aqi"] is not None else 0
+
+        return jsonify({
+            "city": city_name,
+            "predictions": predictions
+        })
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+# Global error handler
+@app.errorhandler(Exception)
+def handle_exception(e):
+    print(f"Unhandled exception: {e}")
+    return jsonify({"error": "Something went wrong"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

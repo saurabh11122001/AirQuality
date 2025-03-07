@@ -8,11 +8,11 @@ from collections import defaultdict
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "https://your-frontend.vercel.app"]}})
 
 # Load trained model with error handling
 try:
-    model_path = os.path.join(os.getcwd(), "backend", "best_cnn_model.keras")
+    model_path =r"C:\Users\Saurabh\Desktop\AirQuality\backend\best_cnn_model.keras"
     best_cnn_model = load_model(model_path)
 except Exception as e:
     print(f"Error loading model: {e}")

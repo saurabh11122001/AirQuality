@@ -23,6 +23,7 @@ const SearchResults = () => {
   const [local, setLocal] = useState(null);
   const [city2,setCity2]=useState(null);
   const nextFiveDays = getNextFiveDays();
+  console.log(forecast)
 
   useEffect(() => {
     async function fetchData() {

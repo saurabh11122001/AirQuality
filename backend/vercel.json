@@ -12,6 +12,7 @@
         "dest": "backend/app.py"
       }
     ],
+    "installCommand": "pip install -r backend/requirements.txt",
     "env": {
       "PYTHON_VERSION": "3.10"
     }

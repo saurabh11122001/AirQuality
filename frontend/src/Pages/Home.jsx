@@ -1,4 +1,5 @@
-import { useContext, useState } from "react";
+import { use, useContext, useEffect, useState } from "react";
+import React from "react";
 import axios from "axios";
 import SearchBar from "../Components/Searchbar";
 import { ForecastContext } from "../context/ForecastContext";
@@ -6,10 +7,18 @@ import { WiThermometer, WiCloud, WiStrongWind, WiDaySunny } from "react-icons/wi
 import { useNavigate } from "react-router-dom";
 import './home.css';
 import Footer from "../Components/Footer";
+import { toast } from "react-toastify";
 
 const Home = () => {
   const { forecast, setForecast , city,setCity,loader,setLoader,oneCityData} = useContext(ForecastContext);
     const navigate = useNavigate();
+    useEffect(() => {
+      if(localStorage.getItem("city") || localStorage.getItem("local") || localStorage.getItem("data")){
+        localStorage.removeItem("city");
+        localStorage.removeItem("local");
+        localStorage.removeItem("data");
+      }
+    },[])
   const handleSearch = async (cityName) => {
     if (!cityName) {
       return;
@@ -19,6 +28,8 @@ const Home = () => {
         setLoader(true);
       const response = await axios.post("http://127.0.0.1:5000/predict", { city: cityName });
       setForecast(response.data.predictions);
+      localStorage.setItem("data", JSON.stringify(response.data.predictions));
+      toast.success(`Weather & Air Quality of ${cityName}`);
       setLoader(false)
       navigate("/searchresults");
 

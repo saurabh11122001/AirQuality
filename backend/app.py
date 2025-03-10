@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify , send_from_directory
 import os
 from tensorflow.keras.models import load_model
 import numpy as np
@@ -7,8 +7,11 @@ from datetime import datetime
 from collections import defaultdict
 from flask_cors import CORS
 
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "https://your-frontend.vercel.app"]}})
+app = Flask(__name__, static_folder="static")
+from flask_cors import CORS
+
+CORS(app)  # Allow all origins
+
 
 # Load trained model with error handling
 try:
@@ -89,9 +92,12 @@ def predict_pm25(historical_data):
         print(f"Error in prediction: {e}")
         return []
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    if path and os.path.exists(os.path.join("static", path)):
+        return send_from_directory("static", path)
+    return send_from_directory("static", "index.html")
 
 @app.route('/result')
 def result():

@@ -136,6 +136,33 @@ def predict():
         print(f"Unexpected error: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+
+@app.route('/get-coordinates', methods=['POST'])
+def get_coordinates():
+    try:
+        data = request.get_json()
+        city = data.get("city")
+        if not city:
+            return jsonify({"error": "City not provided"}), 400
+
+        # Geocoding API Request
+        url = f"https://nominatim.openstreetmap.org/search?format=json&q={city}"
+        headers = {"User-Agent": "YourAppName"}  # ⚠️ Add User-Agent to avoid blocking
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            return jsonify({"error": "Invalid response from API"}), 500
+
+        results = response.json()
+        if not results:
+            return jsonify({"error": "No results found"}), 404
+
+        return jsonify({
+            "lat": results[0]["lat"],
+            "lon": results[0]["lon"]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 # Global error handler
 @app.errorhandler(Exception)
 def handle_exception(e):

@@ -7,6 +7,7 @@ import axios from "axios";
 import AQIMeter from "./AQImeter";
 import { toast } from "react-toastify";
 import AQIChart from "./AQIChart";
+import CityMap from "./CityMap";
 
 const getNextFiveDays = () => {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -98,6 +99,7 @@ const SearchResults = () => {
             </button>
           </div>
         </div>
+        {/* Map */}
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* AQI Card */}
@@ -143,7 +145,9 @@ const SearchResults = () => {
               </div>
             </div>
           </div>
-
+          <div className="relative bg-white w-96 h-72 p-1 rounded-lg shadow-md mt-6">
+          <CityMap city={city} />
+        </div>
           {forecast?.[0]?.pm25 / 5 > 5 && (
             <div className="bg-red-100 rounded-md py-5 h-20 mt-auto px-3 text-sm flex gap-3">
               <span className="flex items-center">
@@ -172,12 +176,12 @@ const SearchResults = () => {
             </div>
           ))}
         </div>
-       <div className="bg-white p-6 rounded-lg shadow-md mt-6">
-       <h2 className="text-3xl font-bold text-center text-black mt-8">5 Days Air Quality Forecast of {city}</h2>
-       <AQIChart forecast={forecast} nextFiveDays={nextFiveDays} />
-       </div>
+        <div className="bg-white p-6 rounded-lg shadow-md mt-6">
+          <h2 className="text-3xl font-bold text-center text-black mt-8">5 Days Air Quality Forecast of {city}</h2>
+          <AQIChart forecast={forecast} nextFiveDays={nextFiveDays} />
+        </div>
       </div>
-      
+
       <Footer />
     </>
   );

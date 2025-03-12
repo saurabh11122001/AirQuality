@@ -61,7 +61,7 @@ const SearchResults = () => {
   const handleSearch = async () => {
     if (!city2) return;
     try {
-      const response = await axios.post("http://127.0.0.1:5000/predict", { city: city2 });
+      const response = await axios.post("https://airquality-3bg2.onrender.com/predict", { city: city2 });
       setForecast(response.data.predictions);
       localStorage.setItem("data", JSON.stringify(response.data.predictions));
       toast.success(`Weather & Air Quality of ${city2}`);

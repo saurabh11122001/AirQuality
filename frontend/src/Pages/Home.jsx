@@ -26,7 +26,7 @@ const Home = () => {
     try {
         setCity(cityName);
         setLoader(true);
-      const response = await axios.post("https://airquality-3bg2.onrender.com/predict", { city: cityName });
+      const response = await axios.post("https://airquality-production.up.railway.app/predict", { city: cityName });
       setForecast(response.data.predictions);
       localStorage.setItem("data", JSON.stringify(response.data.predictions));
       toast.success(`Weather & Air Quality of ${cityName}`);

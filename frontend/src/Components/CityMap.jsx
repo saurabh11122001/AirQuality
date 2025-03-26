@@ -19,7 +19,7 @@ const CityMap = ({ city }) => {
 
     const fetchCoordinates = async () => {
       try {
-        const response = await axios.post("https://airquality-3bg2.onrender.com/get-coordinates", { city });
+        const response = await axios.post("https://airquality-production.up.railway.app/get-coordinates", { city });
         setPosition([parseFloat(response.data.lat), parseFloat(response.data.lon)]);
       } catch (error) {
         console.error("Error fetching city coordinates:", error);

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify , send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 from tensorflow.keras.models import load_model
 import numpy as np
@@ -7,30 +7,23 @@ from datetime import datetime
 from collections import defaultdict
 from flask_cors import CORS
 
-
 # CUDA disable karne ke liye
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 app = Flask(__name__, static_folder="static")
-from flask_cors import CORS
-
 CORS(app)  # Allow all origins
 
 
+api_key = "701cf10ad3df9b6f5f58f40bfba7e837"
+
 # Load trained model with error handling
 try:
-    # model_path =r"C:\Users\Saurabh\Desktop\AirQuality\backend\best_cnn_model.keras"
-    # best_cnn_model = load_model(model_path)
-    # Get the path relative to app.py
     model_path = os.path.join(os.path.dirname(__file__), "best_cnn_model.keras")
-    # Load model
     best_cnn_model = load_model(model_path)
 except Exception as e:
     print(f"Error loading model: {e}")
     best_cnn_model = None
-
-api_key = '701cf10ad3df9b6f5f58f40bfba7e837'
 
 def get_city_coordinates(city_name):
     try:
@@ -73,7 +66,7 @@ def calculate_aqi_and_warning(pm25):
     for low_pm, high_pm, low_aqi, high_aqi, category, warning, color in breakpoints:
         if low_pm <= pm25 <= high_pm:
             aqi = (high_aqi - low_aqi) / (high_pm - low_pm) * (pm25 - low_pm) + low_aqi
-            return round(aqi) if aqi is not None else 0, category, warning, color
+            return round(aqi), category, warning, color
     return 0, "Out of Range", "PM2.5 level is beyond measurable limits.", "gray"
 
 def predict_pm25(historical_data):
@@ -83,7 +76,7 @@ def predict_pm25(historical_data):
 
         sequence = np.array(historical_data).reshape((1, 5, 1))
         predictions = []
-        for _ in range(5):
+        for _ in range(3):  # 🔥 Predict only for 3 days
             pred = best_cnn_model.predict(sequence)[0, 0]
             pm25_value = abs(pred)
             aqi, category, warning, color = calculate_aqi_and_warning(pm25_value)
@@ -113,6 +106,7 @@ def result():
     return render_template('result.html')
 
 @app.route('/predict', methods=['POST'])
+@app.route('/predict', methods=['POST'])
 def predict():
     try:
         city_name = request.json.get("city")
@@ -122,16 +116,21 @@ def predict():
             return jsonify({"error": "Invalid city"}), 400
 
         forecast_data = fetch_forecast_pm25(lat, lon)
+
         if not forecast_data:
             return jsonify({"error": "No forecast data available"}), 400
 
-        historical_data = list(forecast_data.values())[:5]
-        if len(historical_data) < 5:
-            return jsonify({"error": "Insufficient data"}), 400
+        historical_data = list(forecast_data.values())
+
+        # 🔥 Fix: Ensure at least 5 values, pad if needed
+        while len(historical_data) < 5:
+            historical_data.insert(0, historical_data[0])  # Duplicate first value to fill missing days
+
+        # 🔥 Ensure only last 5 days are used
+        historical_data = historical_data[-5:]
 
         predictions = predict_pm25(historical_data)
 
-        # Convert numpy.float32 to Python float
         for item in predictions:
             item["pm25"] = float(item["pm25"])
             item["aqi"] = int(item["aqi"]) if item["aqi"] is not None else 0
@@ -154,9 +153,8 @@ def get_coordinates():
         if not city:
             return jsonify({"error": "City not provided"}), 400
 
-        # Geocoding API Request
         url = f"https://nominatim.openstreetmap.org/search?format=json&q={city}"
-        headers = {"User-Agent": "YourAppName"}  # ⚠️ Add User-Agent to avoid blocking
+        headers = {"User-Agent": "YourAppName"}  
         response = requests.get(url, headers=headers)
 
         if response.status_code != 200:
@@ -172,15 +170,16 @@ def get_coordinates():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-# Global error handler
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     print(f"Unhandled exception: {e}")
     return jsonify({"error": "Something went wrong"}), 500
 
-# if __name__ == '__main__':
-#     app.run(debug=True)
-
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Default port 5000
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True)
+
+
+# if __name__ == '__main__':
+#     port = int(os.environ.get("PORT", 5000))  # Default port 5000
+#     app.run(host="0.0.0.0", port=port, debug=True)

@@ -7,6 +7,11 @@ from datetime import datetime
 from collections import defaultdict
 from flask_cors import CORS
 
+
+# CUDA disable karne ke liye
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
 app = Flask(__name__, static_folder="static")
 from flask_cors import CORS
 

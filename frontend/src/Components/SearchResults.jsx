@@ -10,13 +10,13 @@ import AQIChart from "./AQIChart";
 import CityMap from "./CityMap";
 
 const getNextFiveDays = () => {
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   return Array.from({ length: 5 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() + i);
     return {
       day: days[date.getDay()],
-      date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
     };
   });
 };
@@ -61,7 +61,7 @@ const SearchResults = () => {
   const handleSearch = async () => {
     if (!city2) return;
     try {
-      const response = await axios.post("https://airquality-production.up.railway.app/predict", { city: city2 });
+      const response = await axios.post("http://localhost:5000/predict", { city: city2 });
       setForecast(response.data.predictions);
       localStorage.setItem("data", JSON.stringify(response.data.predictions));
       toast.success(`Weather & Air Quality of ${city2}`);
@@ -155,7 +155,7 @@ const SearchResults = () => {
               </span>
               <p>
                 PM<small>2.5</small> concentration is currently{" "}
-                <strong className="text-red-600">{(forecast?.[0]?.pm25 / 5)?.toFixed(2)}</strong> times the World Health Organization annual PM2.5 guideline value.
+                <strong className="text-red-600">{(forecast?.[0]?.pm25 / 5)?.toFixed(2)}</strong> times the World Health Organization annual PM<small>2.5 </small>guideline value.
               </p>
             </div>
           )}

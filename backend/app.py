@@ -176,8 +176,7 @@ def handle_exception(e):
     print(f"Unhandled exception: {e}")
     return jsonify({"error": "Something went wrong"}), 500
 
-# if __name__ == '__main__':
-#     app.run(debug=True)
+
 
 
 if __name__ == '__main__':

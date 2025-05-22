@@ -11,7 +11,7 @@ import CityMap from "./CityMap";
 
 const getNextFiveDays = () => {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  return Array.from({ length: 5 }, (_, i) => {
+  return Array.from({ length: 3 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() + i);
     return {
@@ -163,10 +163,10 @@ const SearchResults = () => {
 
         {/* 5 Days Prediction */}
         <h2 className="text-3xl font-bold text-center text-black mt-8">5 Days Air Quality Forecast</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-4">
+        <div className="flex items-center justify-center gap-6 mt-6">
           {forecast?.slice(0, 5).map((data, index) => (
-            <div key={index} className="bg-white p-4 rounded-lg shadow-md text-center hover:scale-105 transition-transform flex flex-col items-center">
-              <h3 className="text-lg font-bold text-gray-700">{nextFiveDays[index]?.day}</h3>
+            <div key={index} className="bg-white w-96 h-72 p-4 rounded-lg shadow-md text-center hover:scale-105 transition-transform flex flex-col items-center justify-center">
+              <h3 className="text-2xl font-bold text-gray-700">{nextFiveDays[index]?.day}</h3>
               <p className="text-md text-gray-600">{nextFiveDays[index]?.date}</p>
               <p className="text-md font-medium text-gray-700">PM<small>2.5</small>: {data?.pm25?.toFixed(2) || "N/A"} µg/m³</p>
               <p className="text-md font-semibold text-gray-800">AQI: {data?.aqi || "N/A"}</p>

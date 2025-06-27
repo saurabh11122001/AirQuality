@@ -3,7 +3,7 @@ import os
 from tensorflow.keras.models import load_model
 import numpy as np
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 from flask_cors import CORS
 
@@ -37,19 +37,43 @@ def get_city_coordinates(city_name):
         print(f"Error fetching coordinates: {e}")
     return None, None
 
+
+
 def fetch_forecast_pm25(lat, lon):
     try:
-        url = f"http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat={lat}&lon={lon}&appid={api_key}"
+        # Include today
+        start_date = datetime.utcnow().date()
+        end_date = start_date + timedelta(days=4)  # Total 5 days
+
+        url = (
+            f"https://air-quality-api.open-meteo.com/v1/air-quality?"
+            f"latitude={lat}&longitude={lon}&start_date={start_date}&end_date={end_date}&hourly=pm2_5"
+        )
+
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        
-        pm2_5_daily = defaultdict(list)
-        for entry in data.get('list', []):
-            date_str = datetime.utcfromtimestamp(entry['dt']).strftime('%Y-%m-%d')
-            pm2_5_daily[date_str].append(entry['components']['pm2_5'])
 
-        return {date: sum(values) / len(values) for date, values in pm2_5_daily.items()}
+        pm2_5_values = data.get("hourly", {}).get("pm2_5", [])
+        time_values = data.get("hourly", {}).get("time", [])
+
+        if not pm2_5_values or not time_values:
+            return {}
+
+        pm2_5_daily = defaultdict(list)
+
+        for i in range(len(time_values)):
+            date_str = time_values[i].split("T")[0]
+            pm2_5_daily[date_str].append(pm2_5_values[i])
+
+        # Daily average calculation
+        daily_averages = {
+            date: round(sum(values) / len(values), 2)
+            for date, values in pm2_5_daily.items()
+        }
+
+        return daily_averages
+
     except Exception as e:
         print(f"Error fetching PM2.5 data: {e}")
         return {}
@@ -76,7 +100,7 @@ def predict_pm25(historical_data):
 
         sequence = np.array(historical_data).reshape((1, 5, 1))
         predictions = []
-        for _ in range(3):  # 🔥 Predict only for 3 days
+        for _ in range(5):  # 🔥 Predict only for 3 days
             pred = best_cnn_model.predict(sequence)[0, 0]
             pm25_value = abs(pred)
             aqi, category, warning, color = calculate_aqi_and_warning(pm25_value)

@@ -11,7 +11,7 @@ import CityMap from "./CityMap";
 
 const getNextFiveDays = () => {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  return Array.from({ length: 3 }, (_, i) => {
+  return Array.from({ length: 5 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() + i);
     return {

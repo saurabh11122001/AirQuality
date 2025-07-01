@@ -39,15 +39,20 @@ def get_city_coordinates(city_name):
 
 
 
+
 def fetch_forecast_pm25(lat, lon):
     try:
-        # Include today
-        start_date = datetime.utcnow().date()
-        end_date = start_date + timedelta(days=4)  # Total 5 days
+        from collections import defaultdict
+        from datetime import datetime, timedelta
+
+        # Fetch last 5 days (excluding today)
+        end_date = datetime.utcnow().date() - timedelta(days=1)  # Yesterday
+        start_date = end_date - timedelta(days=4)  # 5 days total
 
         url = (
             f"https://air-quality-api.open-meteo.com/v1/air-quality?"
-            f"latitude={lat}&longitude={lon}&start_date={start_date}&end_date={end_date}&hourly=pm2_5"
+            f"latitude={lat}&longitude={lon}"
+            f"&start_date={start_date}&end_date={end_date}&hourly=pm2_5"
         )
 
         response = requests.get(url)
@@ -61,7 +66,6 @@ def fetch_forecast_pm25(lat, lon):
             return {}
 
         pm2_5_daily = defaultdict(list)
-
         for i in range(len(time_values)):
             date_str = time_values[i].split("T")[0]
             pm2_5_daily[date_str].append(pm2_5_values[i])
@@ -77,7 +81,6 @@ def fetch_forecast_pm25(lat, lon):
     except Exception as e:
         print(f"Error fetching PM2.5 data: {e}")
         return {}
-
 def calculate_aqi_and_warning(pm25):
     breakpoints = [
         (0, 30, 0, 50, "Good", "Satisfactory air quality.", "green"),
